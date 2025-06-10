@@ -9,7 +9,7 @@ const MoktakSVG: React.FC<MoktakSVGProps> = ({ className = "", isAnimating = fal
   return (
     <svg 
       viewBox="0 0 300 300" 
-      className={`${className} ${isAnimating ? 'animate-pulse' : ''}`}
+      className={`moktak-svg-bg ${className} ${isAnimating ? 'animate-pulse' : ''}`}
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* Gradient definitions */}

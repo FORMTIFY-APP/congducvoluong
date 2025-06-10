@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Award, Calendar, Volume2, VolumeX } from 'lucide-react';
+import { Award, Calendar, Heart, Volume2, VolumeX } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import MoktakSVG from './components/MoktakSVG';
 
 interface MeritData {
@@ -42,6 +42,7 @@ function App() {
   const [currentQuote, setCurrentQuote] = useState(QUOTES[0]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showAchievement, setShowAchievement] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Load data from localStorage
   useEffect(() => {
@@ -81,10 +82,25 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const playWoodenMoktakSound = useCallback(() => {
+  // Khởi tạo AudioContext một lần duy nhất
+  useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return () => {
+      audioContextRef.current?.close();
+    };
+  }, []);
+
+  const playWoodenMoktakSound = useCallback(async () => {
     if (!soundEnabled) return;
-    
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    let audioContext = audioContextRef.current;
+    if (!audioContext) return;
+    // Resume context nếu bị suspend (Chrome policy)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    const now = audioContext.currentTime;
     
     // Create authentic wooden moktak sound
     const createWoodenKnock = (frequency: number, startTime: number, duration: number, volume: number) => {
@@ -174,8 +190,6 @@ function App() {
       noiseSource.stop(audioContext.currentTime + 0.1);
     };
     
-    const now = audioContext.currentTime;
-    
     // Main wooden knock (fundamental frequency)
     createWoodenKnock(180, now, 0.8, 0.6);
     
@@ -213,7 +227,7 @@ function App() {
     return newAchievements;
   }, [meritData.achievements]);
 
-  const handleTap = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  const handleTap = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -226,7 +240,7 @@ function App() {
     }, 800);
     
     // Play wooden moktak sound
-    playWoodenMoktakSound();
+    await playWoodenMoktakSound();
     
     // Animate the moktak
     setIsAnimating(true);
@@ -307,7 +321,6 @@ function App() {
               <div className="absolute inset-4 w-auto h-auto rounded-full border-2 border-red-400 animate-ping opacity-40" style={{ animationDelay: '0.1s' }}></div>
             </div>
           ))}
-          
           {/* Moktak SVG */}
           <div className={`w-full h-full transition-all duration-300 ${
             isAnimating ? 'drop-shadow-2xl' : 'drop-shadow-xl hover:drop-shadow-2xl'
@@ -318,7 +331,6 @@ function App() {
             />
           </div>
         </div>
-        
         {/* Tap instruction */}
         <div className="text-center mt-6">
           <p className="text-orange-800 font-semibold text-lg">Chạm vào mõ để tích lũy công đức</p>
