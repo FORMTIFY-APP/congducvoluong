@@ -18,7 +18,34 @@ const QUOTES = [
   "Việc nhỏ, lòng từ bi lớn",
   "Cầu cho tu tập của bạn mang lại niềm vui cho tất cả",
   "Nam mô A Di Đà Phật",
-  "Tâm thanh tịnh, phước đức vô biên"
+  "Tâm thanh tịnh, phước đức vô biên",
+  "Một niệm thiện là một hạt giống an lành",
+  "Kiên trì tu tập, công đức tự nhiên sinh trưởng",
+  "Chánh niệm trong từng hơi thở, từng tiếng mõ",
+  "Từ bi là nền tảng của mọi công đức",
+  "Hạnh phúc đến từ sự buông xả và tha thứ",
+  "Gieo nhân lành, gặt quả ngọt",
+  "Tâm an thì mọi sự đều an",
+  "Công đức không bao giờ mất, chỉ chuyển hóa thành phước lành",
+  "Mỗi ngày tu tập là một ngày an lạc",
+  "Nguyện đem công đức này hướng về tất cả chúng sinh",
+  "Một tiếng mõ, một tâm thiện",
+  "Tích lũy công đức từng ngày, từng giờ",
+  "Tâm sáng như ngọc, lòng thiện như hoa",
+  "Công đức là hành trang cho cuộc sống an lạc",
+  "Mỗi hành động thiện là một bước tiến trên con đường giác ngộ",
+  "Từ bi và trí tuệ là đôi cánh của công đức",
+  "Chăm chỉ tu tập, phước lành viên mãn",
+  "Công đức lớn bắt đầu từ những việc nhỏ",
+  "Tâm tĩnh lặng, phước đức sinh sôi",
+  "Mỗi ngày tu tập là một ngày hạnh phúc",
+  "Công đức là ánh sáng soi đường",
+  "Nguyện cầu cho mọi người đều được an vui",
+  "Tích lũy công đức là tích lũy hạnh phúc",
+  "Một nụ cười, một công đức",
+  "Tâm thiện là nguồn gốc của mọi phước lành",
+  "Công đức như biển cả, không bao giờ cạn",
+  "Hành thiện tích đức, đời đời an lạc"
 ];
 
 const ACHIEVEMENTS = [
@@ -42,7 +69,9 @@ function App() {
   const [currentQuote, setCurrentQuote] = useState(QUOTES[0]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showAchievement, setShowAchievement] = useState<string | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load data from localStorage
   useEffect(() => {
@@ -82,131 +111,18 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Khởi tạo AudioContext một lần duy nhất
-  useEffect(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return () => {
-      audioContextRef.current?.close();
-    };
-  }, []);
-
-  const playWoodenMoktakSound = useCallback(async () => {
-    if (!soundEnabled) return;
-    let audioContext = audioContextRef.current;
-    if (!audioContext) return;
-    // Resume context nếu bị suspend (Chrome policy)
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-    const now = audioContext.currentTime;
-    
-    // Create authentic wooden moktak sound
-    const createWoodenKnock = (frequency: number, startTime: number, duration: number, volume: number) => {
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      const filter = audioContext.createBiquadFilter();
-      
-      oscillator.connect(filter);
-      filter.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Wooden percussion waveform
-      oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(frequency, startTime);
-      oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.3, startTime + duration);
-      
-      // Low-pass filter for wooden, muffled sound
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(400, startTime);
-      filter.frequency.exponentialRampToValueAtTime(200, startTime + duration);
-      filter.Q.setValueAtTime(2, startTime);
-      
-      // Sharp attack, quick decay like wood
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.005);
-      gainNode.gain.exponentialRampToValueAtTime(volume * 0.3, startTime + 0.1);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-      
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
-    };
-    
-    // Create wooden resonance
-    const createWoodenResonance = (frequency: number, startTime: number, duration: number, volume: number) => {
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      const filter = audioContext.createBiquadFilter();
-      
-      oscillator.connect(filter);
-      filter.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(frequency, startTime);
-      
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(frequency, startTime);
-      filter.Q.setValueAtTime(8, startTime);
-      
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-      
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
-    };
-    
-    // Create wooden "thock" noise
-    const createWoodenNoise = () => {
-      const bufferSize = audioContext.sampleRate * 0.1;
-      const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-      const noiseData = noiseBuffer.getChannelData(0);
-      
-      for (let i = 0; i < bufferSize; i++) {
-        // Create filtered noise that sounds like wood impact
-        const decay = Math.exp(-i / (audioContext.sampleRate * 0.02));
-        noiseData[i] = (Math.random() * 2 - 1) * decay * 0.5;
-      }
-      
-      const noiseSource = audioContext.createBufferSource();
-      const noiseGain = audioContext.createGain();
-      const noiseFilter = audioContext.createBiquadFilter();
-      
-      noiseSource.buffer = noiseBuffer;
-      noiseSource.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(audioContext.destination);
-      
-      noiseFilter.type = 'bandpass';
-      noiseFilter.frequency.setValueAtTime(300, audioContext.currentTime);
-      noiseFilter.Q.setValueAtTime(3, audioContext.currentTime);
-      
-      noiseGain.gain.setValueAtTime(0.4, audioContext.currentTime);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-      
-      noiseSource.start(audioContext.currentTime);
-      noiseSource.stop(audioContext.currentTime + 0.1);
-    };
-    
-    // Main wooden knock (fundamental frequency)
-    createWoodenKnock(180, now, 0.8, 0.6);
-    
-    // Wooden resonance harmonics
-    createWoodenResonance(180, now + 0.01, 1.2, 0.3);
-    createWoodenResonance(270, now + 0.02, 0.9, 0.2);
-    createWoodenResonance(360, now + 0.015, 0.6, 0.15);
-    
-    // Wood impact noise
-    createWoodenNoise();
-    
-    // Subtle echo for temple acoustics
+  const playMokugyoSound = useCallback(() => {
+    if (!soundEnabled || !audioRef.current || isPlaying) return;
+    const audio = audioRef.current;
+    setIsPlaying(true);
+    audio.currentTime = 0;
+    audio.play();
     setTimeout(() => {
-      createWoodenKnock(180, audioContext.currentTime, 0.4, 0.1);
-    }, 150);
-    
-  }, [soundEnabled]);
+      audio.pause();
+      audio.currentTime = 0;
+      setIsPlaying(false);
+    }, 500);
+  }, [soundEnabled, isPlaying]);
 
   const checkAchievements = useCallback((newTotal: number, newStreak: number) => {
     const newAchievements = [];
@@ -227,7 +143,11 @@ function App() {
     return newAchievements;
   }, [meritData.achievements]);
 
-  const handleTap = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleTap = useCallback(async (event: React.MouseEvent<HTMLDivElement | HTMLImageElement>) => {
+    const now = Date.now();
+    if (now - lastClickTime < 500) return;
+    setLastClickTime(now);
+    
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -239,8 +159,8 @@ function App() {
       setRipples(prev => prev.filter(r => r.id !== rippleId));
     }, 800);
     
-    // Play wooden moktak sound
-    await playWoodenMoktakSound();
+    // Play moktak sound
+    playMokugyoSound();
     
     // Animate the moktak
     setIsAnimating(true);
@@ -257,7 +177,7 @@ function App() {
       todayMerit: newToday,
       achievements: [...prev.achievements, ...newAchievements]
     }));
-  }, [meritData, playWoodenMoktakSound, checkAchievements]);
+  }, [meritData, playMokugyoSound, checkAchievements, lastClickTime]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -303,7 +223,6 @@ function App() {
           className={`relative w-80 h-80 cursor-pointer transition-all duration-300 ${
             isAnimating ? 'scale-95 rotate-1' : 'scale-100 hover:scale-105'
           }`}
-          onClick={handleTap}
         >
           {/* Ripple effects */}
           {ripples.map(ripple => (
@@ -328,9 +247,12 @@ function App() {
             <MoktakSVG 
               className="w-full h-full" 
               isAnimating={isAnimating}
+              onClick={handleTap}
             />
           </div>
         </div>
+        {/* Hidden audio element */}
+        <audio ref={audioRef} src="/Mokugyo.wav" preload="auto" />
         {/* Tap instruction */}
         <div className="text-center mt-6">
           <p className="text-orange-800 font-semibold text-lg">Chạm vào mõ để tích lũy công đức</p>
